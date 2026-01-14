@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Detection Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="./opencv.js" async></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; }
+        #status { color: blue; font-weight: bold; }
+        video { border: 2px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>AI Emotion Detection</h1>
+    <p id="status">กำลังเริ่มต้นระบบ...</p>
+    <video id="videoInput" width="640" height="480" autoplay playsinline></video>
+
+    <script>
+        async function setup() {
+            const status = document.getElementById('status');
+            try {
+                // 1. ตรวจสอบว่ามี OpenCV หรือไม่
+                if (typeof cv === 'undefined') {
+                    status.innerText = "กำลังรอ OpenCV.js...";
+                    setTimeout(setup, 1000); // รอ 1 วินาทีแล้วลองใหม่
+                    return;
+                }
+
+                // 2. โหลดโมเดล (เช็คชื่อไฟล์ให้ตรงกับใน GitHub เป๊ะๆ)
+                status.innerText = "กำลังโหลดโมเดล AI...";
+                const session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
+                
+                // 3. เปิดกล้อง
+                status.innerText = "เปิดกล้อง...";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('videoInput').srcObject = stream;
+                
+                status.innerText = "ระบบพร้อมทำงาน!";
+            } catch (e) {
+                status.innerText = "เกิดข้อผิดพลาด: " + e.message;
+                console.error(e);
+            }
+        }
+
+        // เริ่มทำงานเมื่อโหลดหน้าเว็บเสร็จ
+        window.onload = setup;
+    </script>
+</body>
+</html>
