@@ -1,23 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emotion Detection Demo</title>
-    <script src="opencv.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script src="opencv.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f0f2f5; }
+        .container { position: relative; display: inline-block; margin-top: 20px; }
+        video, canvas { border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #status { margin: 10px; color: #555; }
+    </style>
 </head>
 <body>
     <h1>AI Emotion Detection Demo</h1>
-    <video id="videoInput" width="640" height="480" autoplay></video>
-    <canvas id="canvasOutput" width="640" height="480"></canvas>
+    <p id="status">กำลังโหลดโมเดล AI... (กรุณารอสักครู่)</p>
+    
+    <div class="container">
+        <video id="videoInput" width="640" height="480" autoplay muted style="display:none;"></video>
+        <canvas id="canvasOutput" width="640" height="480"></canvas>
+    </div>
 
     <script>
-        // โค้ดส่วนนี้จะทำหน้าที่ดึงกล้องและรัน emotion_yolo11n_cls.onnx
-        async function setupApp() {
-            const session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
-            console.log("Model loaded!");
-            // ... ส่วนการประมวลผลวิดีโอ ...
+        let session;
+        let labels = [];
+
+        async function init() {
+            try {
+                const response = await fetch('classes.json');
+                const data = await response.json();
+                labels = Object.values(data);
+
+                session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
+                
+                document.getElementById('status').innerText = "โมเดลพร้อมใช้งาน! กำลังเปิดกล้อง...";
+                startCamera();
+            } catch (e) {
+                document.getElementById('status').innerText = "เกิดข้อผิดพลาด: " + e.message;
+            }
         }
-        setupApp();
+
+        function startCamera() {
+            const video = document.getElementById('videoInput');
+            navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                .then(stream => {
+                    video.srcObject = stream;
+                    video.play();
+                    processVideo();
+                });
+        }
+
+        async function processVideo() {
+            const video = document.getElementById('videoInput');
+            const canvas = document.getElementById('canvasOutput');
+            const ctx = canvas.getContext('2d');
+
+            if (video.paused || video.ended) return;
+            
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            document.getElementById('status').innerText = "AI กำลังวิเคราะห์อารมณ์แบบ Real-time";
+            
+            requestAnimationFrame(processVideo);
+        }
+
+        cv['onRuntimeInitialized'] = () => { init(); };
     </script>
 </body>
 </html>
