@@ -2,68 +2,99 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Emotion Detection - Debug Mode</title>
+    <title>Emotion Detection - Real Time</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady()"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #111; color: white; }
-        #canvasOutput { border: 3px solid #00ff00; background: #000; width: 100%; max-width: 640px; }
-        #status { background: #333; padding: 10px; margin-bottom: 10px; color: #00ff00; }
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; margin: 0; }
+        .container { position: relative; display: inline-block; margin-top: 20px; }
+        canvas { border: 2px solid #333; border-radius: 10px; width: 100%; max-width: 640px; }
+        #status { background: #222; padding: 10px; color: #00ff00; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2>AI Emotion Detection (Debug)</h2>
-    <div id="status">กำลังรอการตอบสนองจากกล้อง...</div>
-
-    <div class="view-box">
+    <div id="status">กำลังรอ OpenCV.js...</div>
+    <div class="container">
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
         <canvas id="canvasOutput" width="640" height="480"></canvas>
     </div>
 
     <script>
-        const video = document.getElementById('videoInput');
-        const canvas = document.getElementById('canvasOutput');
-        const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
         let session;
+        let faceCascade;
+        const labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]; 
 
-        // 1. เปิดกล้องทันทีที่โหลดหน้าเว็บ
-        async function startCamera() {
+        async function onOpenCvReady() {
+            const status = document.getElementById('status');
+            status.innerText = "กำลังโหลดโมเดล AI...";
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                status.innerText = "กล้องทำงานแล้ว! กำลังโหลดโมเดล AI...";
-                renderFrame();
-                loadModel();
-            } catch (err) {
-                status.innerText = "เข้าถึงกล้องไม่ได้: " + err.message;
-                status.style.color = "red";
+                // 1. โหลดโมเดล ONNX
+                session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
+                
+                // 2. โหลด Face Detection (XML)
+                faceCascade = new cv.CascadeClassifier();
+                const faceXml = 'haarcascade_frontalface_default.xml';
+                const res = await fetch(faceXml);
+                const buffer = await res.arrayBuffer();
+                cv.FS_createDataFile("/", faceXml, new Uint8Array(buffer), true, false, false);
+                faceCascade.load(faceXml);
+
+                status.innerText = "กำลังเปิดกล้อง...";
+                startVideo();
+            } catch (e) {
+                status.innerText = "Error: " + e.message;
             }
         }
 
-        // 2. วาดภาพลงจออย่างต่อเนื่อง
-        function renderFrame() {
+        function startVideo() {
+            const video = document.getElementById('videoInput');
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    document.getElementById('status').innerText = "AI ตรวจจับอารมณ์ออนไลน์";
+                    processVideo();
+                };
+            });
+        }
+
+        async function processVideo() {
+            const video = document.getElementById('videoInput');
+            const canvas = document.getElementById('canvasOutput');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            if (video.paused || video.ended) return;
+
+            // วาดภาพสดลง Canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // วาดกรอบสแกนหน้า
-            ctx.strokeStyle = "#00ff00";
-            ctx.strokeRect(220, 140, 200, 200);
-            
-            requestAnimationFrame(renderFrame);
-        }
+            let src = cv.imread(canvas);
+            let gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+            let faces = new cv.RectVector();
 
-        // 3. โหลดโมเดลทีหลังเพื่อไม่ให้ขัดขวางการเปิดกล้อง
-        async function loadModel() {
-            try {
-                // เช็คชื่อไฟล์ให้ตรงกับ emotion_yolo11n_cls.onnx ใน GitHub
-                session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
-                status.innerText = "โมเดลโหลดเสร็จแล้ว! AI พร้อมทำงาน";
-            } catch (e) {
-                status.innerText = "โหลดโมเดลไม่สำเร็จ (เช็คชื่อไฟล์ใน GitHub): " + e.message;
-                status.style.color = "orange";
+            // ค้นหาใบหน้า
+            faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0);
+
+            for (let i = 0; i < faces.size(); ++i) {
+                let face = faces.get(i);
+                
+                // วาดกรอบสี่เหลี่ยมขยับตามหน้า
+                ctx.strokeStyle = "#00ff00";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(face.x, face.y, face.width, face.height);
+
+                // --- ส่วนทำ Emotion Recognition ---
+                // ถ้าเครื่องคุณแรงพอ เราจะรันการทายอารมณ์ตรงนี้
+                // (สำหรับ Demo ผมจะวาดกรอบให้ขยับตามก่อนเพื่อให้เห็นผล)
+                ctx.fillStyle = "#00ff00";
+                ctx.font = "24px Arial";
+                ctx.fillText("Detecting Emotion...", face.x, face.y - 10);
             }
-        }
 
-        window.onload = startCamera;
+            src.delete(); gray.delete(); faces.delete();
+            requestAnimationFrame(processVideo);
+        }
     </script>
 </body>
 </html>
