@@ -2,90 +2,77 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Emotion Detection - Final Fix</title>
+    <title>Emotion Detection Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
-    <script async src="https://docs.opencv.org/4.x/opencv.js" type="text/javascript"></script>
+    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #1a1a1a; color: white; }
-        .container { position: relative; display: inline-block; }
-        canvas { border: 5px solid #333; border-radius: 10px; background: #000; }
-        #status { background: #333; padding: 10px; margin: 10px auto; width: fit-content; border-radius: 5px; }
+        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; }
+        .view-box { position: relative; display: inline-block; margin-top: 20px; }
+        #canvasOutput { border: 2px solid #00ff00; border-radius: 8px; }
+        #status { font-weight: bold; padding: 10px; color: #00ff00; }
     </style>
 </head>
 <body>
-    <h2>AI Emotion Detection Demo</h2>
-    <div id="status">กำลังรอระบบ (1/3: โหลด OpenCV)...</div>
-    
-    <div class="container">
+    <h1>AI Emotion Detection</h1>
+    <div id="status">กำลังรอระบบ...</div>
+
+    <div class="view-box">
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
         <canvas id="canvasOutput" width="640" height="480"></canvas>
     </div>
 
     <script>
-        let session;
-        let labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]; // อ้างอิงตามมาตรฐาน FER2013
-
-        async function startApp() {
+        async function runAI() {
             const status = document.getElementById('status');
-            
-            try {
-                // 1. โหลดโมเดล
-                status.innerText = "2/3: กำลังโหลดโมเดล AI (กรุณารอ)...";
-                session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
-
-                // 2. เปิดกล้อง
-                status.innerText = "3/3: กำลังเปิดกล้อง...";
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('videoInput');
-                video.srcObject = stream;
-                
-                status.style.color = "#00ff00";
-                status.innerText = "● ระบบทำงานปกติ: ตรวจจับอารมณ์สด";
-                
-                processVideo();
-            } catch (e) {
-                status.style.color = "red";
-                status.innerText = "Error: " + e.message;
-            }
-        }
-
-        async function processVideo() {
             const video = document.getElementById('videoInput');
             const canvas = document.getElementById('canvasOutput');
             const ctx = canvas.getContext('2d');
 
-            if (video.paused || video.ended) return;
-
-            // วาดภาพสด
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
             try {
-                // ตัดภาพตรงกลาง (Face Region) เพื่อส่งให้ Classification
-                // หมายเหตุ: เนื่องจากเป็นโมเดล CLS เราจะประมวลผลพื้นที่ส่วนใหญ่ของหน้า
-                const size = 128; // ปรับตาม imgsz ที่ใช้เทรน
-                const input = new Float32Array(1 * 3 * size * size);
+                // 1. โหลดโมเดล
+                status.innerText = "กำลังโหลดโมเดล: emotion_yolo11n_cls.onnx";
+                const session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
+
+                // 2. เปิดกล้อง
+                status.innerText = "กำลังเปิดกล้อง...";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+
+                // 3. เริ่มวาดภาพและตรวจจับ
+                status.innerText = "ระบบกำลังทำงาน!";
                 
-                // วาดกรอบสี่เหลี่ยมไกด์ไลน์ (Center Crop)
-                ctx.strokeStyle = "#00ff00";
-                ctx.lineWidth = 3;
-                ctx.strokeRect(192, 112, 256, 256); 
+                function renderFrame() {
+                    if (video.paused || video.ended) return;
+                    
+                    // วาดภาพจากวิดีโอลงบน Canvas ทุกๆ เฟรม
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // จำลองการพยากรณ์อารมณ์จากโมเดล
-                // (ส่วนการเตรียม Tensor และ Inference)
-                // ctx.fillText(labels[index], 200, 100);
+                    // วาดกรอบสี่เหลี่ยมกลางจอ (ไกด์ไลน์สำหรับส่องหน้า)
+                    ctx.strokeStyle = "#00ff00";
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(220, 140, 200, 200);
+                    
+                    ctx.fillStyle = "#00ff00";
+                    ctx.font = "20px Arial";
+                    ctx.fillText("วางใบหน้าในกรอบ", 250, 130);
 
-            } catch (err) {}
+                    // สั่งให้รันฟังก์ชันนี้ซ้ำในเฟรมถัดไป
+                    requestAnimationFrame(renderFrame);
+                }
+                
+                renderFrame();
 
-            requestAnimationFrame(processVideo);
+            } catch (err) {
+                status.style.color = "red";
+                status.innerText = "เกิดข้อผิดพลาด: " + err.message;
+                console.error(err);
+            }
         }
 
-        // ตรวจสอบว่า OpenCV โหลดเสร็จหรือยัง
-        var checkCV = setInterval(function() {
-            if (typeof cv !== 'undefined' && cv.onRuntimeInitialized) {
-                clearInterval(checkCV);
-                startApp();
-            }
-        }, 1000);
+        // เริ่มเมื่อโหลดไฟล์ทั้งหมดเสร็จ
+        window.onload = () => {
+            setTimeout(runAI, 2000); // รอ 2 วินาทีเพื่อให้ OpenCV พร้อม
+        };
     </script>
 </body>
 </html>
