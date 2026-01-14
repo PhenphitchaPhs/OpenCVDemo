@@ -2,19 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Emotion Detection Fix</title>
+    <title>Emotion Detection - Debug Mode</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
-    <script src="https://docs.opencv.org/4.x/opencv.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #000; color: #fff; }
-        .view-box { position: relative; display: inline-block; margin-top: 20px; }
-        #canvasOutput { border: 2px solid #00ff00; border-radius: 8px; }
-        #status { font-weight: bold; padding: 10px; color: #00ff00; }
+        body { font-family: sans-serif; text-align: center; background: #111; color: white; }
+        #canvasOutput { border: 3px solid #00ff00; background: #000; width: 100%; max-width: 640px; }
+        #status { background: #333; padding: 10px; margin-bottom: 10px; color: #00ff00; }
     </style>
 </head>
 <body>
-    <h1>AI Emotion Detection</h1>
-    <div id="status">กำลังรอระบบ...</div>
+    <h2>AI Emotion Detection (Debug)</h2>
+    <div id="status">กำลังรอการตอบสนองจากกล้อง...</div>
 
     <div class="view-box">
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
@@ -22,57 +20,50 @@
     </div>
 
     <script>
-        async function runAI() {
-            const status = document.getElementById('status');
-            const video = document.getElementById('videoInput');
-            const canvas = document.getElementById('canvasOutput');
-            const ctx = canvas.getContext('2d');
+        const video = document.getElementById('videoInput');
+        const canvas = document.getElementById('canvasOutput');
+        const ctx = canvas.getContext('2d');
+        const status = document.getElementById('status');
+        let session;
 
+        // 1. เปิดกล้องทันทีที่โหลดหน้าเว็บ
+        async function startCamera() {
             try {
-                // 1. โหลดโมเดล
-                status.innerText = "กำลังโหลดโมเดล: emotion_yolo11n_cls.onnx";
-                const session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
-
-                // 2. เปิดกล้อง
-                status.innerText = "กำลังเปิดกล้อง...";
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-
-                // 3. เริ่มวาดภาพและตรวจจับ
-                status.innerText = "ระบบกำลังทำงาน!";
-                
-                function renderFrame() {
-                    if (video.paused || video.ended) return;
-                    
-                    // วาดภาพจากวิดีโอลงบน Canvas ทุกๆ เฟรม
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    // วาดกรอบสี่เหลี่ยมกลางจอ (ไกด์ไลน์สำหรับส่องหน้า)
-                    ctx.strokeStyle = "#00ff00";
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(220, 140, 200, 200);
-                    
-                    ctx.fillStyle = "#00ff00";
-                    ctx.font = "20px Arial";
-                    ctx.fillText("วางใบหน้าในกรอบ", 250, 130);
-
-                    // สั่งให้รันฟังก์ชันนี้ซ้ำในเฟรมถัดไป
-                    requestAnimationFrame(renderFrame);
-                }
-                
+                status.innerText = "กล้องทำงานแล้ว! กำลังโหลดโมเดล AI...";
                 renderFrame();
-
+                loadModel();
             } catch (err) {
+                status.innerText = "เข้าถึงกล้องไม่ได้: " + err.message;
                 status.style.color = "red";
-                status.innerText = "เกิดข้อผิดพลาด: " + err.message;
-                console.error(err);
             }
         }
 
-        // เริ่มเมื่อโหลดไฟล์ทั้งหมดเสร็จ
-        window.onload = () => {
-            setTimeout(runAI, 2000); // รอ 2 วินาทีเพื่อให้ OpenCV พร้อม
-        };
+        // 2. วาดภาพลงจออย่างต่อเนื่อง
+        function renderFrame() {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // วาดกรอบสแกนหน้า
+            ctx.strokeStyle = "#00ff00";
+            ctx.strokeRect(220, 140, 200, 200);
+            
+            requestAnimationFrame(renderFrame);
+        }
+
+        // 3. โหลดโมเดลทีหลังเพื่อไม่ให้ขัดขวางการเปิดกล้อง
+        async function loadModel() {
+            try {
+                // เช็คชื่อไฟล์ให้ตรงกับ emotion_yolo11n_cls.onnx ใน GitHub
+                session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
+                status.innerText = "โมเดลโหลดเสร็จแล้ว! AI พร้อมทำงาน";
+            } catch (e) {
+                status.innerText = "โหลดโมเดลไม่สำเร็จ (เช็คชื่อไฟล์ใน GitHub): " + e.message;
+                status.style.color = "orange";
+            }
+        }
+
+        window.onload = startCamera;
     </script>
 </body>
 </html>
