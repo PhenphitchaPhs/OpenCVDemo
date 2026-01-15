@@ -96,7 +96,7 @@
 
         async function onOpenCvReady() {
             const status = document.getElementById('status');
-            status.innerText = "LOADING AI MODEL (128x128)...";
+            status.innerText = "LOADING AI MODEL ...";
             try {
                 // โหลดโมเดล
                 session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
@@ -212,8 +212,6 @@
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
         <canvas id="canvasOutput" width="640" height="480"></canvas>
     </div>
-
-    <div class="info-panel">AI EMOTION ENGINE V2.0 | REAL-TIME ANALYZING</div>
 
 </body>
 </html>
