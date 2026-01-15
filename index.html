@@ -3,21 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emotion AI - Realtime Detection</title>
+    <title>Emotion AI - Cutie Version</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #00ffcc;
-            --bg-dark: #0a0a0c;
-            --glass: rgba(255, 255, 255, 0.05);
+            --cute-pink: #ffafbd;
+            --cute-peach: #ffc3a0;
+            --main-font: 'Mali', cursive;
         }
 
         body { 
-            font-family: 'Inter', sans-serif; 
-            background: var(--bg-dark); 
-            color: #fff; 
+            font-family: var(--main-font); 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); 
+            color: #5d5d5d; 
             margin: 0; 
             display: flex;
             flex-direction: column;
@@ -27,78 +26,64 @@
             overflow: hidden;
         }
 
+        /* ตกแต่งพื้นหลังให้น่ารัก */
         body::before {
-            content: "";
-            position: absolute;
-            width: 300px; height: 300px;
-            background: var(--primary);
-            filter: blur(150px);
-            opacity: 0.1;
-            top: 10%; left: 10%;
-            z-index: -1;
+            content: "☁️"; position: absolute; top: 10%; left: 10%; font-size: 50px; opacity: 0.3;
+        }
+        body::after {
+            content: "✨"; position: absolute; bottom: 15%; right: 15%; font-size: 40px; opacity: 0.3;
         }
 
         #status { 
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            padding: 15px 30px; 
-            color: var(--primary); 
-            font-weight: 600; 
-            border-radius: 50px;
-            border: 1px solid rgba(0, 255, 204, 0.3);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 12px 25px; 
+            color: #ff8a9a; 
+            font-weight: 700; 
+            border-radius: 30px;
+            border: 2px solid var(--cute-pink);
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
+            box-shadow: 0 8px 20px rgba(255, 175, 189, 0.3);
+            font-size: 16px;
+            z-index: 10;
         }
 
         .main-wrapper {
             position: relative;
-            padding: 10px;
-            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
-            border-radius: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border: 6px solid #fff;
         }
 
         canvas { 
-            border-radius: 18px; 
+            border-radius: 30px; 
             display: block;
             width: 100%;
             max-width: 640px;
-            height: auto;
+            background: #eee;
         }
-
-        .scanner-corner {
-            position: absolute;
-            width: 40px; height: 40px;
-            border: 3px solid var(--primary);
-            z-index: 10;
-        }
-        .top-left { top: 20px; left: 20px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
-        .top-right { top: 20px; right: 20px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
-        .bottom-left { bottom: 20px; left: 20px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
-        .bottom-right { bottom: 20px; right: 20px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
 
         .info-panel {
             margin-top: 20px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
-            letter-spacing: 2px;
+            font-size: 14px;
+            color: #aaa;
+            background: #fff;
+            padding: 5px 15px;
+            border-radius: 20px;
         }
     </style>
 
     <script>
         let session;
         let faceCascade;
-        const labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]; 
+        // ปรับ Label ให้มี Emoji นำหน้า
+        const labels = ["😡 Angry", "🤢 Disgust", "😨 Fear", "😊 Happy", "😢 Sad", "😲 Surprise", "😐 Neutral"]; 
 
         async function onOpenCvReady() {
             const status = document.getElementById('status');
-            status.innerText = "LOADING AI MODEL ...";
+            status.innerText = "รอเดี๋ยวนะคะ กำลังโหลด AI... 🎀";
             try {
-                // โหลดโมเดล
                 session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
                 
                 faceCascade = new cv.CascadeClassifier();
@@ -108,12 +93,11 @@
                 cv.FS_createDataFile("/", faceXml, new Uint8Array(buffer), true, false, false);
                 faceCascade.load(faceXml);
 
-                status.innerText = "SYSTEM ONLINE - SCANNING";
+                status.innerText = "พร้อมแล้วค่ะ! มายิ้มกันเถอะ ✨";
                 startVideo();
             } catch (e) {
+                status.innerText = "อุ๊ย! มีบางอย่างผิดพลาด";
                 console.error(e);
-                status.innerText = "ERROR: " + e.message;
-                status.style.color = "#ff4d4d";
             }
         }
 
@@ -131,39 +115,32 @@
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             
             if (video.paused || video.ended) return;
-
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             let src = cv.imread(canvas);
             let gray = new cv.Mat();
             cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
             let faces = new cv.RectVector();
-
             faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0);
 
             for (let i = 0; i < faces.size(); ++i) {
                 let face = faces.get(i);
                 
-                ctx.strokeStyle = "#00ffcc";
-                ctx.lineWidth = 3;
+                // กรอบหน้าสีชมพูพาสเทลแบบมนๆ
+                ctx.strokeStyle = "#ffafbd";
+                ctx.lineWidth = 5;
+                ctx.lineJoin = "round";
                 ctx.strokeRect(face.x, face.y, face.width, face.height);
-
-                ctx.fillStyle = "#00ffcc";
-                ctx.fillRect(face.x-2, face.y-2, 15, 4);
-                ctx.fillRect(face.x-2, face.y-2, 4, 15);
 
                 try {
                     const size = 128; 
                     const faceCanvas = document.createElement('canvas');
-                    faceCanvas.width = size;
-                    faceCanvas.height = size;
+                    faceCanvas.width = size; faceCanvas.height = size;
                     const fCtx = faceCanvas.getContext('2d');
-                    
                     fCtx.drawImage(canvas, face.x, face.y, face.width, face.height, 0, 0, size, size);
                     
                     const imgData = fCtx.getImageData(0, 0, size, size);
                     const input = new Float32Array(1 * 3 * size * size);
-                    
                     for (let c = 0; c < 3; c++) {
                         for (let p = 0; p < size * size; p++) {
                             input[c * size * size + p] = imgData.data[p * 4 + c] / 255.0;
@@ -171,47 +148,50 @@
                     }
 
                     const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
-                    const feeds = {};
-                    feeds[session.inputNames[0]] = tensor;
-                    const output = await session.run(feeds);
+                    const output = await session.run({ [session.inputNames[0]]: tensor });
                     const outputData = output[session.outputNames[0]].data;
                     
                     const maxIdx = outputData.indexOf(Math.max(...outputData));
-                    const emotion = labels[maxIdx] || "Unknown";
+                    const emotion = labels[maxIdx] || "???";
 
-                    ctx.fillStyle = "rgba(0, 255, 204, 0.8)";
+                    // ป้ายชื่ออารมณ์แบบโค้งมนน่ารัก
+                    ctx.fillStyle = "#ffafbd";
                     const textWidth = ctx.measureText(emotion).width;
-                    ctx.fillRect(face.x, face.y - 45, textWidth + 30, 35);
+                    
+                    // วาดสี่เหลี่ยมขอบมน (Rounded Rect)
+                    const r = 15; // รัศมีความมน
+                    const x = face.x; const y = face.y - 55; const w = textWidth + 60; const h = 40;
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.arcTo(x+w, y, x+w, y+h, r);
+                    ctx.arcTo(x+w, y+h, x, y+h, r);
+                    ctx.arcTo(x, y+h, x, y, r);
+                    ctx.arcTo(x, y, x+w, y, r);
+                    ctx.closePath();
+                    ctx.fill();
 
-                    ctx.fillStyle = "#000";
-                    ctx.font = "bold 20px Inter";
-                    ctx.fillText(emotion, face.x + 10, face.y - 20);
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "bold 22px Mali";
+                    ctx.fillText(emotion, face.x + 15, face.y - 27);
 
-                } catch (err) {
-                    console.error(err);
-                }
+                } catch (err) { console.error(err); }
             }
-
             src.delete(); gray.delete(); faces.delete();
             requestAnimationFrame(processVideo);
         }
     </script>
-
     <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady()"></script>
 </head>
 <body>
 
-    <div id="status">INITIALIZING SYSTEM...</div>
+    <div id="status">กำลังปลุก AI ให้ตื่น... ☁️</div>
 
     <div class="main-wrapper">
-        <div class="scanner-corner top-left"></div>
-        <div class="scanner-corner top-right"></div>
-        <div class="scanner-corner bottom-left"></div>
-        <div class="scanner-corner bottom-right"></div>
-
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
         <canvas id="canvasOutput" width="640" height="480"></canvas>
     </div>
+
+    <div class="info-panel">Emotion AI Dashboard ♡ v2.0</div>
 
 </body>
 </html>
