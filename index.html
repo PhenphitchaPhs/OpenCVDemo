@@ -2,37 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Emotion Detection - Fixed 128x128</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion AI - Realtime Detection</title>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
     <script async src="https://docs.opencv.org/4.x/opencv.js" onload="onOpenCvReady()"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #000; color: #fff; margin: 0; overflow: hidden; }
-        .container { position: relative; display: inline-block; margin-top: 15px; }
-        canvas { border: 3px solid #00ff00; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); width: 90vw; max-width: 640px; }
-        #status { background: rgba(34, 34, 34, 0.9); padding: 12px; color: #00ff00; font-weight: bold; border-bottom: 1px solid #333; }
+        :root {
+            --primary: #00ffcc;
+            --bg-dark: #0a0a0c;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg-dark); 
+            color: #fff; 
+            margin: 0; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100-vh;
+            overflow: hidden;
+        }
+
+        /* ตกแต่ง Background */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300px; height: 300px;
+            background: var(--primary);
+            filter: blur(150px);
+            opacity: 0.1;
+            top: 10%; left: 10%;
+            z-index: -1;
+        }
+
+        #status { 
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px; 
+            color: var(--primary); 
+            font-weight: 600; 
+            border-radius: 50px;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .main-wrapper {
+            position: relative;
+            padding: 10px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+            border-radius: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas { 
+            border-radius: 18px; 
+            display: block;
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+        }
+
+        /* ตกแต่งกรอบ Scanner มุมขอบ Canvas */
+        .scanner-corner {
+            position: absolute;
+            width: 40px; height: 40px;
+            border: 3px solid var(--primary);
+            z-index: 10;
+        }
+        .top-left { top: 20px; left: 20px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+        .top-right { top: 20px; right: 20px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+        .bottom-left { bottom: 20px; left: 20px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+        .bottom-right { bottom: 20px; right: 20px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+
+        .info-panel {
+            margin-top: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
-    <div id="status">ระบบกำลังเริ่มต้น (กรุณารอ OpenCV)...</div>
-    <div class="container">
+
+    <div id="status">INITIALIZING SYSTEM...</div>
+
+    <div class="main-wrapper">
+        <div class="scanner-corner top-left"></div>
+        <div class="scanner-corner top-right"></div>
+        <div class="scanner-corner bottom-left"></div>
+        <div class="scanner-corner bottom-right"></div>
+
         <video id="videoInput" width="640" height="480" autoplay playsinline style="display:none;"></video>
         <canvas id="canvasOutput" width="640" height="480"></canvas>
     </div>
 
+    <div class="info-panel">AI EMOTION ENGINE V2.0 | REAL-TIME ANALYZING</div>
+
     <script>
         let session;
         let faceCascade;
-        // ลำดับอารมณ์มาตรฐาน (ตรวจสอบให้ตรงกับไฟล์ classes.json ของคุณ)
         const labels = ["Angry", "Disgust", "Fear", "Happy", "Sad", "Surprise", "Neutral"]; 
 
         async function onOpenCvReady() {
             const status = document.getElementById('status');
-            status.innerText = "กำลังโหลดโมเดล AI (128x128)...";
+            status.innerText = "LOADING AI MODEL (128x128)...";
             try {
-                // 1. โหลดโมเดล ONNX
                 session = await ort.InferenceSession.create('./emotion_yolo11n_cls.onnx');
                 
-                // 2. โหลด XML สำหรับตรวจจับใบหน้า
                 faceCascade = new cv.CascadeClassifier();
                 const faceXml = 'haarcascade_frontalface_default.xml';
                 const res = await fetch(faceXml);
@@ -40,11 +124,11 @@
                 cv.FS_createDataFile("/", faceXml, new Uint8Array(buffer), true, false, false);
                 faceCascade.load(faceXml);
 
-                status.innerText = "ระบบออนไลน์! กรุณาส่องหน้าให้ตรงกล้อง";
+                status.innerText = "SYSTEM ONLINE - SCANNING";
                 startVideo();
             } catch (e) {
-                status.innerText = "Error: " + e.message;
-                status.style.color = "red";
+                status.innerText = "ERROR: " + e.message;
+                status.style.color = "#ff4d4d";
             }
         }
 
@@ -63,7 +147,6 @@
             
             if (video.paused || video.ended) return;
 
-            // วาดภาพสดจากกล้องลง Canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
             let src = cv.imread(canvas);
@@ -71,33 +154,33 @@
             cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
             let faces = new cv.RectVector();
 
-            // ค้นหาใบหน้า
             faceCascade.detectMultiScale(gray, faces, 1.1, 3, 0);
 
             for (let i = 0; i < faces.size(); ++i) {
                 let face = faces.get(i);
                 
-                // วาดกรอบสี่เหลี่ยมรอบใบหน้า
-                ctx.strokeStyle = "#00ff00";
-                ctx.lineWidth = 4;
+                // วาดกรอบหน้าแบบ Futuristic
+                ctx.strokeStyle = "#00ffcc";
+                ctx.lineWidth = 3;
                 ctx.strokeRect(face.x, face.y, face.width, face.height);
 
+                // เพิ่ม Effect มุมกรอบเล็กๆ
+                ctx.fillStyle = "#00ffcc";
+                ctx.fillRect(face.x-2, face.y-2, 15, 4);
+                ctx.fillRect(face.x-2, face.y-2, 4, 15);
+
                 try {
-                    // --- แก้ไขจุดสำคัญ: ปรับขนาดเป็น 128 ตามที่โมเดลต้องการ ---
                     const size = 128; 
-                    
                     const faceCanvas = document.createElement('canvas');
                     faceCanvas.width = size;
                     faceCanvas.height = size;
                     const fCtx = faceCanvas.getContext('2d');
                     
-                    // ตัดเฉพาะส่วนใบหน้ามาขยายเป็น 128x128
                     fCtx.drawImage(canvas, face.x, face.y, face.width, face.height, 0, 0, size, size);
                     
                     const imgData = fCtx.getImageData(0, 0, size, size);
                     const input = new Float32Array(1 * 3 * size * size);
                     
-                    // เตรียม Tensor ข้อมูลภาพ (NCHW format)
                     for (let c = 0; c < 3; c++) {
                         for (let p = 0; p < size * size; p++) {
                             input[c * size * size + p] = imgData.data[p * 4 + c] / 255.0;
@@ -105,34 +188,30 @@
                     }
 
                     const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
-                    
-                    // สั่งให้ AI ทำนายอารมณ์
                     const feeds = {};
                     feeds[session.inputNames[0]] = tensor;
                     const output = await session.run(feeds);
                     const outputData = output[session.outputNames[0]].data;
                     
-                    // เลือกอารมณ์ที่มีค่าความมั่นใจสูงสุด
                     const maxIdx = outputData.indexOf(Math.max(...outputData));
                     const emotion = labels[maxIdx] || "Unknown";
 
-                    // แสดงข้อความอารมณ์เหนือกรอบหน้า
-                    ctx.fillStyle = "#00ff00";
-                    ctx.font = "bold 35px Arial";
-                    ctx.shadowColor = "black";
-                    ctx.shadowBlur = 7;
-                    ctx.fillText(emotion, face.x, face.y - 15);
-                    ctx.shadowBlur = 0;
+                    // พื้นหลังข้อความอารมณ์
+                    ctx.fillStyle = "rgba(0, 255, 204, 0.8)";
+                    const textWidth = ctx.measureText(emotion).width;
+                    ctx.fillRect(face.x, face.y - 45, textWidth + 20, 35);
+
+                    // ข้อความอารมณ์
+                    ctx.fillStyle = "#000";
+                    ctx.font = "bold 20px Inter";
+                    ctx.fillText(emotion, face.x + 10, face.y - 20);
 
                 } catch (err) {
-                    console.error("AI Inference Error:", err);
+                    console.error(err);
                 }
             }
 
-            // คืนหน่วยความจำ OpenCV
             src.delete(); gray.delete(); faces.delete();
-            
-            // รันเฟรมถัดไป
             requestAnimationFrame(processVideo);
         }
     </script>
